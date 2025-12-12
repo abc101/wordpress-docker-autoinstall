@@ -94,14 +94,22 @@ echo "✅  wp-config.php found! File exists."
 # 9. HTTPS reverse-proxy snippet injection
 if ! grep -q "HTTP_X_FORWARDED_PROTO" "$WP_CONFIG"; then
   echo "⏳  Injecting HTTPS reverse-proxy snippet..."
-  awk '
+
+  HTTPS_BLOCK=$(cat <<'PHP'
+/**
+ * Handle HTTPS (SSL) behind a reverse proxy.
+ */
+if ( ! empty( $_SERVER['HTTP_X_FORWARDED_PROTO'] ) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https' ) {
+    $_SERVER['HTTPS'] = 'on';
+    $_SERVER['SERVER_PORT'] = 443;
+}
+
+PHP
+)
+
+  awk -v repl="$HTTPS_BLOCK" '
   /\/\* That'\''s all, stop editing! Happy publishing\. \*\// && !done {
-    print "/**";
-    print " * Handle HTTPS (SSL) behind a reverse proxy.";
-    print " */";
-    print "if ( ! empty( $_SERVER[\"HTTP_X_FORWARDED_PROTO\"] ) && $_SERVER[\"HTTP_X_FORWARDED_PROTO\"] === \"https\" ) {";
-    print "    $_SERVER[\"HTTPS\"] = \"on\"; $_SERVER[\"SERVER_PORT\"] = 443; }";
-    print "";
+    print repl;
     done=1
   }
   { print }' "$WP_CONFIG" > /tmp/wp-config.tmp
@@ -112,6 +120,41 @@ if ! grep -q "HTTP_X_FORWARDED_PROTO" "$WP_CONFIG"; then
   echo "✅  Injected HTTPS reverse-proxy snippet."
 else
   echo "ℹ️  HTTPS reverse-proxy snippet already exists. Skipping."
+fi
+
+# 10. Redis Object Cache config injection
+REDIS_SALT="${PROJECT_NAME}_"
+
+if ! grep -q "WP_REDIS_HOST" "$WP_CONFIG"; then
+  echo "⏳  Injecting Redis Object Cache config..."
+
+  REDIS_BLOCK=$(cat <<PHP
+/**
+ * Redis server settings (Docker)
+ * Host is the Docker service name.
+ */
+define('WP_CACHE', true);
+define('WP_REDIS_HOST', 'redis');
+define('WP_REDIS_PORT', 6379);
+define('WP_CACHE_KEY_SALT', '${REDIS_SALT}');
+define('WP_REDIS_SELECTIVE_FLUSH', true);
+
+PHP
+)
+
+  awk -v repl="$REDIS_BLOCK" '
+    /\/\* That'\''s all, stop editing! Happy publishing\. \*\// && !done {
+      print repl;
+      done=1
+    }
+    { print }' "$WP_CONFIG" > /tmp/wp-config.redis.tmp
+
+  mv /tmp/wp-config.redis.tmp "$WP_CONFIG"
+  docker compose exec php sh -c "chown www-data:www-data /var/www/html/wp-config.php"
+
+  echo "✅  Injected Redis Object Cache config."
+else
+  echo "ℹ️  Redis config already exists in wp-config.php. Skipping."
 fi
 
 echo "✅  All tasks complete."
