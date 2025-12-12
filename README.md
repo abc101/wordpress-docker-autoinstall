@@ -6,10 +6,11 @@ It features the `init-wordpress.sh` shell script to automate the initial WordPre
 
 ## 🚀 Key Features
 
-  * **Simple Initialization:** Just run `docker compose up -d` followed by `sudo ./init-wordpress.sh`.
+  * **Simple Initialization:** Just run `docker compose up -d --build` followed by `sudo ./init-wordpress.sh`.
   * **Reverse-Proxy Ready:** Designed to work behind a main Host Nginx, automatically injecting HTTPS settings into `wp-config.php`.
   * **OS Compatibility:** Auto-detects RHEL/Rocky (SELinux) or Debian/Ubuntu and applies necessary security policies (`setsebool`).
   * **Resource Isolation:** Includes `deploy.resources.limits` in `docker-compose.yml` to prevent one site's traffic spike from impacting others (DDOS mitigation).
+  * **Redis:** Install `Redis Object Cache` Wordpress plugin to connect Redis server.
 
 ## 📦 Project Structure
 
@@ -20,7 +21,9 @@ It features the `init-wordpress.sh` shell script to automate the initial WordPre
 ├── init-wordpress.sh    # (CORE) The auto-installer script
 ├── sample.env                 # (IMPORTANT) DB passwords & sensitive info
 ├── nginx/
+│   ├── nginx.conf       # Container's Nginx config (fastci_cache)
 │   └── default.conf     # Container's Nginx config (connects to PHP-FPM)
+│  
 └── php/
     └── uploads.ini      # PHP settings like upload_max_filesize
 ```
