@@ -157,6 +157,8 @@ When you see below message,
 ```
 🚀  Open your site in the browser to continue WordPress setup.
 ⏳  Wait for finishing WordPress initialization ...
+
+USE Database Host: db
 ```
 
 1.  Open your domain (`http://your.domain`, `https://your.domain`) in a web browser.
